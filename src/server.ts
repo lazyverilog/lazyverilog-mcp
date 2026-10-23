@@ -7,14 +7,15 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { FILE_HEADERS_ONLY, createTwoFilesPatch } from "diff";
+import { FILE_HEADERS_ONLY, createTwoFilesPatch, diffLines } from "diff";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import { LspClient, applyTextEdits, pathKey, uriToPath, workspaceEditByPath, type Position, type WorkspaceEdit } from "./lsp.ts";
 
 const SYMBOL_KINDS: Record<number, string> = {
-  2: "module", 3: "package", 5: "class", 6: "method", 7: "property", 8: "field", 10: "enum",
-  11: "interface", 12: "function", 13: "variable", 14: "constant", 22: "enum member",
+  // lazyverilog's choices: Namespace = named block, Method = task, Property = port, Object = instance.
+  2: "module", 3: "block", 4: "package", 5: "class", 6: "task", 7: "port", 8: "field", 10: "enum",
+  11: "interface", 12: "function", 13: "variable", 14: "constant", 19: "instance", 22: "enum member",
   23: "struct", 24: "event", 26: "type parameter",
 };
 // Code actions whose command only previews; the matching command performs the edit.
@@ -134,9 +135,35 @@ async function applyWorkspaceEdit(edit: WorkspaceEdit | null | undefined, previe
   return (preview ? "Preview (not written):\n" : `Applied to ${changed.length} file(s):\n`) + diffs.join("");
 }
 
+/** `old` with only the formatter changes that touch lines start..end (1-based, inclusive). */
+export function formatLines(old: string, formatted: string, start: number, end: number): string {
+  const parts = diffLines(old, formatted);
+  let out = "";
+  let line = 1;
+  for (let i = 0; i < parts.length; i++) {
+    if (!parts[i].added && !parts[i].removed) {
+      out += parts[i].value;
+      line += parts[i].count;
+      continue;
+    }
+    // One change: the adjacent removed and added runs.
+    let removed = "";
+    let added = "";
+    let count = 0;
+    for (; i < parts.length && (parts[i].added || parts[i].removed); i++) {
+      if (parts[i].removed) (removed += parts[i].value), (count += parts[i].count);
+      else added += parts[i].value;
+    }
+    i--;
+    out += line <= end && line + Math.max(count, 1) - 1 >= start ? added : removed;
+    line += count;
+  }
+  return out;
+}
+
 function formatDiagnostics(items: any[] | null): string {
   if (!items?.length) return "No diagnostics.";
-  return items.map((d) => `${d.file}:${d.line}:${d.col}: ${String(d.severity).toLowerCase()}: ${d.message}`).join("\n");
+  return items.map((d) => `${uriToPath(d.uri)}:${d.line}:${d.col}: ${String(d.severity).toLowerCase()}: ${d.message}`).join("\n");
 }
 
 async function at(file: string, line: number, symbol?: string, occurrence = 1) {
@@ -190,10 +217,15 @@ export const tools = {
 
   async format_file({ file, preview = false, start_line, end_line }: { file: string; preview?: boolean; start_line?: number; end_line?: number }) {
     const lsp = await client();
-    const { uri } = await lsp.sync(abs(file));
+    const { uri, data } = await lsp.sync(abs(file));
     // Not textDocument/formatting: that is format-on-save and obeys enable_format_on_save.
-    const args = start_line !== undefined ? [uri, "range", start_line - 1, end_line ?? start_line] : [uri, "full"];
-    return applyWorkspaceEdit(await lsp.command("lazyverilog.format", args), preview);
+    const edit: WorkspaceEdit | null = await lsp.command("lazyverilog.format", [uri, "full"]);
+    if (start_line === undefined || !edit) return applyWorkspaceEdit(edit, preview);
+    // Not the server's "range" mode: it slices the formatted text at the old line numbers,
+    // which garbles the range whenever formatting earlier lines changes the line count.
+    const formatted = applyTextEdits(data, [...workspaceEditByPath(edit).values()].flat()).toString("utf8");
+    const text = formatLines(data.toString("utf8"), formatted, start_line, end_line ?? start_line);
+    return applyWorkspaceEdit({ changes: { [uri]: [{ range: { start: { line: 0, character: 0 }, end: { line: data.length + 1, character: 0 } }, newText: text }] } }, preview);
   },
 
   async goto_definition({ file, line, symbol, occurrence = 1 }: { file: string; line: number; symbol: string; occurrence?: number }) {

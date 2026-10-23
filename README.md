@@ -281,6 +281,16 @@ npm run typecheck
 
 To use a local checkout, point the agent at `node /path/to/lazyverilog-mcp/dist/index.js`.
 
+To release, bump the version on `main` and push the tag:
+
+```bash
+npm version patch   # or minor / major: commits and tags vX.Y.Z
+git push --follow-tags
+```
+
+The [Release workflow](.github/workflows/release.yml) publishes the tag to npm through trusted publishing
+and creates the GitHub release.
+
 ## 📄 License
 
 MIT

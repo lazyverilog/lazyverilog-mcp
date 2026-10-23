@@ -1,0 +1,38 @@
+name: Release
+
+# Push a tag made by `npm version <patch|minor|major>` to publish that version.
+# npm authenticates this workflow through trusted publishing (OIDC); no token is stored.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # create the GitHub release
+  id-token: write # npm trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Check tag matches package.json
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+
+      # Trusted publishing needs npm >= 11.5.1; Node 24 bundles an older one on some images.
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+
+      # prepublishOnly typechecks and prepare builds. CI on main already ran the end-to-end tests.
+      - run: npm publish --access public
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag

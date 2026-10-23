@@ -42,7 +42,7 @@ jobs:
           mv lsp/lazyverilog-lsp-* "lsp/lazyverilog-lsp${{ matrix.ext }}"
           chmod +x "lsp/lazyverilog-lsp${{ matrix.ext }}"
           "lsp/lazyverilog-lsp${{ matrix.ext }}" --version
-          # node prints a native path (D:a\... on Windows), which spawn() accepts.
+          # node prints a native path (D:\a\... on Windows), which spawn() accepts.
           echo "LAZYVERILOG_LSP=$(node -p "require('path').resolve('lsp/lazyverilog-lsp${{ matrix.ext }}')")" >> "$GITHUB_ENV"
 
       - run: npm ci

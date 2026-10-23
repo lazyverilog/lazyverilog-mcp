@@ -97,6 +97,7 @@ export class LspClient {
   private parsedWaiters = new Map<string, () => void>();
   private syncQueue: Promise<unknown> = Promise.resolve();
   private buffer = Buffer.alloc(0);
+  private stderrTail = "";
   private markIndexed!: () => void;
   // The server sends workspace/inlayHint/refresh each time it publishes a project index.
   private indexed = new Promise<void>((resolve) => (this.markIndexed = resolve));
@@ -104,9 +105,14 @@ export class LspClient {
 
   constructor(binary: string, root: string) {
     this.root = path.resolve(root);
-    this.proc = spawn(binary, [], { stdio: ["pipe", "pipe", "ignore"] });
+    this.proc = spawn(binary, [], { stdio: ["pipe", "pipe", "pipe"] });
+    // Keep only the tail: it is the useful part when the server dies, and the server logs a lot.
+    this.proc.stderr!.on("data", (chunk: Buffer) => (this.stderrTail = (this.stderrTail + chunk.toString()).slice(-2000)));
     this.proc.on("error", (e) => this.fail(new LspError(`cannot start ${binary}: ${e.message}`)));
-    this.proc.on("exit", () => this.fail(new LspError("lazyverilog-lsp exited")));
+    // "close", not "exit": it fires after stderr is drained, so the tail is complete.
+    this.proc.on("close", (code, signal) =>
+      this.fail(new LspError(`lazyverilog-lsp exited (${signal ?? `code ${code}`})${this.stderrTail ? `:\n${this.stderrTail.trim()}` : ""}`)),
+    );
     this.proc.stdout!.on("data", (chunk: Buffer) => this.onData(chunk));
   }
 

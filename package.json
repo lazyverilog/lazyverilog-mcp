@@ -1,0 +1,45 @@
+{
+  "name": "lazyverilog-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing the lazyverilog SystemVerilog LSP to AI coding agents",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "lazyverilog-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run typecheck"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@types/node": "^24",
+    "diff": "^9.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9",
+    "zod": "^4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lazyverilog/lazyverilog-mcp.git"
+  },
+  "homepage": "https://github.com/lazyverilog/lazyverilog-mcp#readme",
+  "keywords": [
+    "mcp",
+    "systemverilog",
+    "verilog",
+    "lsp",
+    "rtl",
+    "claude-code",
+    "codex"
+  ]
+}

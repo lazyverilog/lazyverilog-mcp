@@ -9,6 +9,7 @@ import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FILE_HEADERS_ONLY, createTwoFilesPatch } from "diff";
 import { z } from "zod";
+import pkg from "../package.json" with { type: "json" };
 import { LspClient, applyTextEdits, pathKey, uriToPath, workspaceEditByPath, type Position, type WorkspaceEdit } from "./lsp.ts";
 
 const SYMBOL_KINDS: Record<number, string> = {
@@ -331,7 +332,7 @@ const TOOLS: Record<keyof typeof tools, { description: string; inputSchema: z.Zo
 };
 
 export function createServer(): McpServer {
-  const server = new McpServer({ name: "lazyverilog", version: "0.1.0" });
+  const server = new McpServer({ name: "lazyverilog", version: pkg.version });
   for (const [name, config] of Object.entries(TOOLS)) {
     const run = tools[name as keyof typeof tools] as (args: any) => Promise<string>;
     // Thrown errors become isError results carrying the message.

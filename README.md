@@ -59,12 +59,13 @@ See the [LazyVerilog configuration docs](https://lazyverilog.github.io) for all 
 ### 4. Register the MCP server with your agent
 
 The package is installed from GitHub with `npx`. The first start builds it, so
-it takes a few seconds longer.
+it takes a few seconds longer. `--allow-git=all` is needed because npm 12
+refuses packages fetched from git by default.
 
 **Claude Code**
 
 ```bash
-claude mcp add lazyverilog --scope user -- npx -y github:lazyverilog/lazyverilog-mcp
+claude mcp add lazyverilog --scope user -- npx -y --allow-git=all github:lazyverilog/lazyverilog-mcp
 ```
 
 `--scope user` enables it in every project. Use `--scope project` to write a
@@ -72,13 +73,13 @@ shared `.mcp.json` into the current repository instead. To pass the binary
 path:
 
 ```bash
-claude mcp add lazyverilog --scope user -e LAZYVERILOG_LSP=/path/to/lazyverilog-lsp -- npx -y github:lazyverilog/lazyverilog-mcp
+claude mcp add lazyverilog --scope user -e LAZYVERILOG_LSP=/path/to/lazyverilog-lsp -- npx -y --allow-git=all github:lazyverilog/lazyverilog-mcp
 ```
 
 On native Windows (not WSL), wrap `npx` with `cmd /c`:
 
 ```bash
-claude mcp add lazyverilog --scope user -- cmd /c npx -y github:lazyverilog/lazyverilog-mcp
+claude mcp add lazyverilog --scope user -- cmd /c npx -y --allow-git=all github:lazyverilog/lazyverilog-mcp
 ```
 
 Check it with `claude mcp list`, or `/mcp` inside a session.
@@ -88,7 +89,7 @@ Check it with `claude mcp list`, or `/mcp` inside a session.
 ```toml
 [mcp_servers.lazyverilog]
 command = "npx"
-args = ["-y", "github:lazyverilog/lazyverilog-mcp"]
+args = ["-y", "--allow-git=all", "github:lazyverilog/lazyverilog-mcp"]
 # env = { LAZYVERILOG_LSP = "/path/to/lazyverilog-lsp" }
 ```
 
@@ -99,7 +100,7 @@ args = ["-y", "github:lazyverilog/lazyverilog-mcp"]
   "mcpServers": {
     "lazyverilog": {
       "command": "npx",
-      "args": ["-y", "github:lazyverilog/lazyverilog-mcp"],
+      "args": ["-y", "--allow-git=all", "github:lazyverilog/lazyverilog-mcp"],
       "env": { "LAZYVERILOG_LSP": "/path/to/lazyverilog-lsp" }
     }
   }

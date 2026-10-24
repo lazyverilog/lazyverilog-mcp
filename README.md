@@ -155,7 +155,7 @@ Rename it to `lazyverilog-lsp` (`lazyverilog-lsp.exe` on Windows) and put it on 
 Example for Linux x64:
 
 ```bash
-VERSION=v2.1.1
+VERSION=v2.1.2
 curl -fLo ~/.local/bin/lazyverilog-lsp \
   https://github.com/lazyverilog/LazyVerilog/releases/download/$VERSION/lazyverilog-lsp-$VERSION-linux-x64
 chmod +x ~/.local/bin/lazyverilog-lsp

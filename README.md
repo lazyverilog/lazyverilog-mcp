@@ -138,32 +138,16 @@ Editing tools write to disk. With `preview: true` they return a unified diff ins
 
 Node.js 20 or newer: <https://nodejs.org>. Check with `node --version`.
 
-### 2. Install `lazyverilog-lsp`
+### 2. `lazyverilog-lsp` (automatic)
 
-Download the server binary for your platform from the
-[latest LazyVerilog release](https://github.com/lazyverilog/LazyVerilog/releases/latest):
+On first use, lazyverilog-mcp downloads the
+[latest LazyVerilog release](https://github.com/lazyverilog/LazyVerilog/releases/latest) of
+`lazyverilog-lsp` for your platform, checks its SHA-256, and caches it in `~/.cache/lazyverilog-mcp`
+(`%LOCALAPPDATA%\lazyverilog-mcp` on Windows). Each new session checks for a newer release, so you
+always run the latest server. Offline, it uses the newest cached copy, then `lazyverilog-lsp` on `PATH`.
 
-| Platform | Asset |
-|----------|-------|
-| Linux x64 | `lazyverilog-lsp-<version>-linux-x64` (or `-linux-x64-static` if libraries are missing) |
-| Linux arm64 | `lazyverilog-lsp-<version>-linux-arm64` (or `-linux-arm64-static`) |
-| macOS Apple Silicon | `lazyverilog-lsp-<version>-darwin-arm64` |
-| macOS Intel | `lazyverilog-lsp-<version>-darwin-x64` |
-| Windows x64 | `lazyverilog-lsp-<version>-windows-x64.exe` |
-
-Rename it to `lazyverilog-lsp` (`lazyverilog-lsp.exe` on Windows) and put it on your `PATH`.
-Example for Linux x64:
-
-```bash
-VERSION=v2.1.2
-curl -fLo ~/.local/bin/lazyverilog-lsp \
-  https://github.com/lazyverilog/LazyVerilog/releases/download/$VERSION/lazyverilog-lsp-$VERSION-linux-x64
-chmod +x ~/.local/bin/lazyverilog-lsp
-lazyverilog-lsp --version
-```
-
-On macOS, if Gatekeeper blocks the binary, run `xattr -d com.apple.quarantine <path>`.
-If you do not want it on `PATH`, set `LAZYVERILOG_LSP` to its full path in the agent configuration below.
+To use a specific binary instead (a pinned version or your own build), set `LAZYVERILOG_LSP` to its
+full path in the agent configuration below.
 To build it yourself, see [Build from source](https://lazyverilog.github.io/installation/#build-from-source).
 
 ### 3. Add a `lazyverilog.toml` to your project
@@ -227,8 +211,7 @@ args = ["-y", "lazyverilog-mcp"]
   "mcpServers": {
     "lazyverilog": {
       "command": "npx",
-      "args": ["-y", "lazyverilog-mcp"],
-      "env": { "LAZYVERILOG_LSP": "/path/to/lazyverilog-lsp" }
+      "args": ["-y", "lazyverilog-mcp"]
     }
   }
 }
@@ -250,7 +233,7 @@ Start the agent from your project directory, or set `LAZYVERILOG_ROOT`.
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `LAZYVERILOG_LSP` | `lazyverilog-lsp` on `PATH` | LSP binary |
+| `LAZYVERILOG_LSP` | latest release, downloaded and cached | LSP binary; set it to pin a version |
 | `LAZYVERILOG_ROOT` | current directory | Workspace root; relative file paths resolve against it |
 | `LAZYVERILOG_INDEX_TIMEOUT` | `30` | Seconds the first call waits for the project index |
 
@@ -262,7 +245,8 @@ background index. On a large project it can still be building for some seconds a
 
 ## 🩺 Troubleshooting
 
-- **`lazyverilog-lsp not found`**: put the binary on `PATH` or set `LAZYVERILOG_LSP`.
+- **`lazyverilog-lsp not found`**: the download failed (no access to github.com). Download the binary
+  from the release page yourself and set `LAZYVERILOG_LSP` to its path.
 - **`lazyverilog-lsp exited`**: run `lazyverilog-lsp --version` in a terminal to see why it does not start.
   A MinGW-built binary on Windows needs the MinGW runtime DLLs (`libstdc++-6.dll`, ...) on `PATH`.
 - **No cross-file results**: check that `lazyverilog.toml` is at the project root and its filelist lists the files.
@@ -275,7 +259,7 @@ background index. On a large project it can still be building for some seconds a
 git clone https://github.com/lazyverilog/lazyverilog-mcp
 cd lazyverilog-mcp
 npm install        # also builds dist/index.js
-npm test           # Node >= 22.18; drives a real lazyverilog-lsp, skipped if not found
+npm test           # Node >= 22.18; downloads the latest lazyverilog-lsp unless LAZYVERILOG_LSP is set
 npm run typecheck
 ```
 

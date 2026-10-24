@@ -1,20 +1,9 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
-import { fileURLToPath } from "node:url";
 import { formatLines, position, stopClient, tools } from "../src/server.ts";
-
-function findLsp(): string | undefined {
-  if (process.env.LAZYVERILOG_LSP) return process.env.LAZYVERILOG_LSP;
-  const exe = process.platform === "win32" ? "lazyverilog-lsp.exe" : "lazyverilog-lsp";
-  for (const dir of (process.env.PATH ?? "").split(path.delimiter)) if (dir && existsSync(path.join(dir, exe))) return path.join(dir, exe);
-  const sibling = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../lazyverilog/build");
-  return existsSync(sibling) ? readdirSync(sibling).map((f) => path.join(sibling, f)).find((f) => path.basename(f) === exe) : undefined;
-}
-
-const LSP = findLsp();
 
 const CHILD = `module child (
     input  logic       clk,
@@ -70,7 +59,6 @@ before(() => {
   for (const [name, text] of Object.entries(FIXTURES)) writeFileSync(path.join(dir, name), text);
   writeFileSync(path.join(dir, "files.f"), ["child.sv", "top.sv", "ugly.sv", ...Object.keys(FIXTURES)].join("\n") + "\n");
   writeFileSync(path.join(dir, "lazyverilog.toml"), '[design]\nvcode = "files.f"\n');
-  if (LSP) process.env.LAZYVERILOG_LSP = LSP;
   process.env.LAZYVERILOG_ROOT = dir;
 });
 
@@ -79,7 +67,8 @@ after(async () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("tools end to end", { skip: !LSP && "lazyverilog-lsp not found" }, async () => {
+// Uses LAZYVERILOG_LSP if set, otherwise downloads the latest release like a real user.
+test("tools end to end", async () => {
   const read = (f: string) => readFileSync(path.join(dir, f), "utf8");
 
   assert.match(await tools.goto_definition({ file: "top.sv", line: 5, symbol: "child" }), /child\.sv:1:/);

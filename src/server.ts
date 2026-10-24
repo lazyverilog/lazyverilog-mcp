@@ -10,6 +10,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { FILE_HEADERS_ONLY, createTwoFilesPatch, diffLines } from "diff";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
+import { latestBinary } from "./install.ts";
 import { LspClient, applyTextEdits, pathKey, uriToPath, workspaceEditByPath, type Position, type WorkspaceEdit } from "./lsp.ts";
 
 const SYMBOL_KINDS: Record<number, string> = {
@@ -27,12 +28,18 @@ const APPLY_COMMAND: Record<string, string> = {
 
 const root = () => process.env.LAZYVERILOG_ROOT || process.cwd();
 
-function findBinary(): string {
+async function findBinary(): Promise<string> {
   if (process.env.LAZYVERILOG_LSP) return process.env.LAZYVERILOG_LSP;
+  try {
+    const latest = await latestBinary();
+    if (latest) return latest;
+  } catch (e) {
+    process.stderr.write(`[lazyverilog-mcp] cannot get the latest lazyverilog-lsp: ${(e as Error).message}\n`);
+  }
   const names = process.platform === "win32" ? ["lazyverilog-lsp.exe", "lazyverilog-lsp"] : ["lazyverilog-lsp"];
   for (const dir of (process.env.PATH ?? "").split(path.delimiter))
     for (const name of names) if (dir && existsSync(path.join(dir, name))) return path.join(dir, name);
-  throw new Error("lazyverilog-lsp not found: put it on PATH or set LAZYVERILOG_LSP");
+  throw new Error("lazyverilog-lsp not found: could not download it; put it on PATH or set LAZYVERILOG_LSP");
 }
 
 let clientPromise: Promise<LspClient> | undefined;
@@ -41,7 +48,7 @@ let current: LspClient | undefined;
 export async function client(): Promise<LspClient> {
   if (!clientPromise || current?.exited) {
     clientPromise = (async () => {
-      current = new LspClient(findBinary(), root());
+      current = new LspClient(await findBinary(), root());
       await current.start();
       return current;
     })();
